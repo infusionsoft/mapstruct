@@ -45,6 +45,10 @@ public class Collections {
         return set;
     }
 
+    public static Set<String> emptySet() {
+        return new HashSet<String>();
+    }
+
     public static <T> List<T> newArrayList(T... elements) {
         List<T> list = new ArrayList<T>();
 

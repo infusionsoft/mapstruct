@@ -135,39 +135,13 @@ public class MethodMatcher {
                                     Type candidateSourceType,
                                     Map<TypeVariable, TypeMirror> genericTypesMap) {
 
-        // When evaluating a candidate against source/target types, we need to also find methods that represent the
-        // "builder" type.  This is used in the case where you have an abstract target that's created using a builder,
-        // and want to provide an {@link org.mapstruct.ObjectFactory} to tell mapstruct that you intend to use the
-        // "builder"-based concrete implementation.
-
-        /*
-         *  AbstractThing mapTo(ConcreteThing thing);
-         *
-         *  @ObjectFactory
-         *  default ImmutableThingImpl thingFactory() {
-         *     // This won't work because we can't construct new ImmutableThingImpl without building first.
-         *     // See below
-         *  }
-         *
-         *  @ObjectFactory
-         *  default ImmutableThingImpl.Builder thingFactory() {
-         *     // This is what we want, but we need to make sure that ImmutableThingImpl.Builder gets resolved as a
-         *     // valid option for AbstractThing
-         *     return ImmutableThingImpl.builder();
-         *  }
-         *
-         *  This is why we use candidateSourceType.getMappingType().  For a "builder" type, this will return the type
-         *  being built.  In the case above, this will cause ImmutableThingImpl.Builder to return ImmutableThingImpl
-         *  as it's candidateTypeMirror value.
-         */
-        TypeMirror candidateTypeMirror = candidateSourceType.getMapToType().getTypeMirror();
-        if ( !isJavaLangObject( candidateTypeMirror ) ) {
+        if ( !isJavaLangObject( candidateSourceType.getTypeMirror() ) ) {
             TypeMatcher parameterMatcher = new TypeMatcher( Assignability.VISITED_ASSIGNABLE_FROM, genericTypesMap );
-            if ( !parameterMatcher.visit( candidateTypeMirror, sourceType.getTypeMirror() ) ) {
+            if ( !parameterMatcher.visit( candidateSourceType.getTypeMirror(), sourceType.getTypeMirror() ) ) {
                 if ( sourceType.isPrimitive() ) {
                     // the candidate source is primitive, so promote to its boxed type and check again (autobox)
                     TypeMirror boxedType = typeUtils.boxedClass( (PrimitiveType) sourceType.getTypeMirror() ).asType();
-                    if ( !parameterMatcher.visit( candidateTypeMirror, boxedType ) ) {
+                    if ( !parameterMatcher.visit( candidateSourceType.getTypeMirror(), boxedType ) ) {
                         return false;
                     }
                 }
@@ -183,9 +157,9 @@ public class MethodMatcher {
 
     private boolean matchResultType(Type resultType, Map<TypeVariable, TypeMirror> genericTypesMap) {
 
-        TypeMirror candidateTypeMirror = candidateMethod.getResultType().getFinalType().getTypeMirror();
+        Type candidateResultType = candidateMethod.getResultType();
 
-        if ( !isJavaLangObject( candidateTypeMirror ) && candidateTypeMirror.getKind() != TypeKind.VOID ) {
+        if ( !isJavaLangObject( candidateResultType.getTypeMirror() ) && !candidateResultType.isVoid() ) {
 
             final Assignability visitedAssignability;
             if ( candidateMethod.getReturnType().isVoid() ) {
@@ -199,19 +173,19 @@ public class MethodMatcher {
             }
 
             TypeMatcher returnTypeMatcher = new TypeMatcher( visitedAssignability, genericTypesMap );
-            if ( !returnTypeMatcher.visit( candidateTypeMirror, resultType.getTypeMirror() ) ) {
+            if ( !returnTypeMatcher.visit( candidateResultType.getTypeMirror(), resultType.getTypeMirror() ) ) {
                 if ( resultType.isPrimitive() ) {
                     TypeMirror boxedType = typeUtils.boxedClass( (PrimitiveType) resultType.getTypeMirror() ).asType();
                     TypeMatcher boxedReturnTypeMatcher =
                         new TypeMatcher( visitedAssignability, genericTypesMap );
 
-                    if ( !boxedReturnTypeMatcher.visit( candidateTypeMirror, boxedType ) ) {
+                    if ( !boxedReturnTypeMatcher.visit( candidateResultType.getTypeMirror(), boxedType ) ) {
                         return false;
                     }
                 }
-                else if ( candidateTypeMirror.getKind().isPrimitive() ) {
+                else if ( candidateResultType.getTypeMirror().getKind().isPrimitive() ) {
                     TypeMirror boxedCandidateReturnType =
-                        typeUtils.boxedClass( (PrimitiveType) candidateTypeMirror ).asType();
+                        typeUtils.boxedClass( (PrimitiveType) candidateResultType.getTypeMirror() ).asType();
                     TypeMatcher boxedReturnTypeMatcher =
                         new TypeMatcher( visitedAssignability, genericTypesMap );
 

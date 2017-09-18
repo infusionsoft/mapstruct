@@ -18,7 +18,9 @@
  */
 package org.mapstruct.ap.internal.util;
 
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.ServiceLoader;
 
 /**
@@ -47,5 +49,21 @@ public class Services {
                "Multiple implementations have been found for the service provider interface" );
         }
         return result;
+    }
+
+    public static <T> List<T> getAll(Class<T> serviceType, T defaultValue) {
+
+        Iterator<T> services = ServiceLoader.load( serviceType, Services.class.getClassLoader() ).iterator();
+        List<T> allProviders = new ArrayList<T>();
+
+        while ( services.hasNext() ) {
+            allProviders.add( services.next() );
+        }
+
+        if ( allProviders.isEmpty() ) {
+            allProviders.add( defaultValue );
+        }
+
+        return allProviders;
     }
 }

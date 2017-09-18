@@ -19,10 +19,10 @@
 package org.mapstruct.ap.internal.model;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
@@ -122,6 +122,7 @@ public class MappingBuilderContext {
     }
 
     private final TypeFactory typeFactory;
+    private final BuilderFactory builderFactory;
     private final Elements elementUtils;
     private final Types typeUtils;
     private final FormattingMessager messager;
@@ -131,18 +132,20 @@ public class MappingBuilderContext {
     private final List<MapperReference> mapperReferences;
     private final MappingResolver mappingResolver;
     private final List<MappingMethod> mappingsToGenerate = new ArrayList<MappingMethod>();
-    private final Map<ForgedMethod, ForgedMethod> forgedMethodsUnderCreation =
-        new HashMap<ForgedMethod, ForgedMethod>(  );
+    private final ConcurrentHashMap<ForgedMethod, ForgedMethod> forgedMethodsUnderCreation =
+        new ConcurrentHashMap<ForgedMethod, ForgedMethod>(  );
 
     public MappingBuilderContext(TypeFactory typeFactory,
-                          Elements elementUtils,
-                          Types typeUtils,
-                          FormattingMessager messager,
-                          Options options,
-                          MappingResolver mappingResolver,
-                          TypeElement mapper,
-                          List<SourceMethod> sourceModel,
-                          List<MapperReference> mapperReferences) {
+        BuilderFactory builderFactory,
+        Elements elementUtils,
+        Types typeUtils,
+        FormattingMessager messager,
+        Options options,
+        MappingResolver mappingResolver,
+        TypeElement mapper,
+        List<SourceMethod> sourceModel,
+        List<MapperReference> mapperReferences) {
+
         this.typeFactory = typeFactory;
         this.elementUtils = elementUtils;
         this.typeUtils = typeUtils;
@@ -152,6 +155,7 @@ public class MappingBuilderContext {
         this.mapperTypeElement = mapper;
         this.sourceModel = sourceModel;
         this.mapperReferences = mapperReferences;
+        this.builderFactory = builderFactory;
     }
 
     /**
@@ -203,6 +207,10 @@ public class MappingBuilderContext {
         return mappingResolver;
     }
 
+    public BuilderFactory getBuilderFactory() {
+        return builderFactory;
+    }
+
     public List<MappingMethod> getMappingsToGenerate() {
         return mappingsToGenerate;
     }
@@ -213,6 +221,15 @@ public class MappingBuilderContext {
             nameList.add( method.getName() );
         }
         return nameList;
+    }
+
+    public ForgedMethod startForgedMethod(ForgedMethod forgedMethod) {
+        forgedMethodsUnderCreation.putIfAbsent( forgedMethod, forgedMethod );
+        return forgedMethodsUnderCreation.get( forgedMethod );
+    }
+
+    public void finishForgedMethod(ForgedMethod forgedMethod) {
+        forgedMethodsUnderCreation.remove( forgedMethod );
     }
 
     public MappingMethod getExistingMappingMethod(MappingMethod newMappingMethod) {

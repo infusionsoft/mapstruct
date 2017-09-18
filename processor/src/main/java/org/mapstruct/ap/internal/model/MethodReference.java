@@ -282,9 +282,18 @@ public class MethodReference extends MappingMethod implements Assignment {
         return new MethodReference( method, null, null, parameterBindings );
     }
 
+    public static MethodReference forLocalMethod(Method method, List<ParameterBinding> parameterBindings) {
+        return new MethodReference( method, null, null, parameterBindings );
+    }
+
     public static MethodReference forParameterProvidedMethod(Method method, Parameter providingParameter,
             List<ParameterBinding> parameterBindings) {
         return new MethodReference( method, null, providingParameter, parameterBindings );
+    }
+
+    public static MethodReference forParameterProvidedMethod(Method method, Parameter providingParameter) {
+        return new MethodReference( method, null, providingParameter,
+            new ArrayList<ParameterBinding>() );
     }
 
     public static MethodReference forMapperReference(Method method, MapperReference declaringMapper,

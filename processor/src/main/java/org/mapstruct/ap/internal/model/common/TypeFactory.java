@@ -18,9 +18,13 @@
  */
 package org.mapstruct.ap.internal.model.common;
 
-import static org.mapstruct.ap.internal.model.common.ImplementationType.withDefaultConstructor;
-import static org.mapstruct.ap.internal.model.common.ImplementationType.withInitialCapacity;
-import static org.mapstruct.ap.internal.model.common.ImplementationType.withLoadFactorAdjustment;
+import org.mapstruct.ap.internal.util.AnnotationProcessingException;
+import org.mapstruct.ap.internal.util.Collections;
+import org.mapstruct.ap.internal.util.JavaStreamConstants;
+import org.mapstruct.ap.internal.util.RoundContext;
+import org.mapstruct.ap.internal.util.accessor.Accessor;
+import org.mapstruct.ap.shared.TypeHierarchyErroneousException;
+import org.mapstruct.ap.spi.AstModifyingAnnotationProcessor;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -37,7 +41,6 @@ import javax.lang.model.type.TypeVariable;
 import javax.lang.model.type.WildcardType;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -57,15 +60,9 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
-import org.mapstruct.ap.internal.util.AnnotationProcessingException;
-import org.mapstruct.ap.internal.util.Collections;
-import org.mapstruct.ap.internal.util.JavaStreamConstants;
-import org.mapstruct.ap.internal.util.RoundContext;
-import org.mapstruct.ap.shared.TypeHierarchyErroneousException;
-import org.mapstruct.ap.internal.util.accessor.Accessor;
-import org.mapstruct.ap.spi.AstModifyingAnnotationProcessor;
-import org.mapstruct.ap.spi.BuilderInfo;
-import org.mapstruct.ap.spi.BuilderProvider;
+import static org.mapstruct.ap.internal.model.common.ImplementationType.withDefaultConstructor;
+import static org.mapstruct.ap.internal.model.common.ImplementationType.withInitialCapacity;
+import static org.mapstruct.ap.internal.model.common.ImplementationType.withLoadFactorAdjustment;
 
 /**
  * Factory creating {@link Type} instances.
@@ -76,7 +73,6 @@ public class TypeFactory {
 
     private final Elements elementUtils;
     private final Types typeUtils;
-    private final BuilderProvider builderProvider;
     private final RoundContext roundContext;
 
     private final TypeMirror iterableType;
@@ -87,11 +83,9 @@ public class TypeFactory {
     private final Map<String, ImplementationType> implementationTypes = new HashMap<String, ImplementationType>();
     private final Map<String, String> importedQualifiedTypesBySimpleName = new HashMap<String, String>();
 
-    public TypeFactory(Elements elementUtils, Types typeUtils, BuilderProvider builderProvider,
-                       RoundContext roundContext) {
+    public TypeFactory(Elements elementUtils, Types typeUtils, RoundContext roundContext) {
         this.elementUtils = elementUtils;
         this.typeUtils = typeUtils;
-        this.builderProvider = builderProvider;
         this.roundContext = roundContext;
 
         iterableType = typeUtils.erasure( elementUtils.getTypeElement( Iterable.class.getCanonicalName() ).asType() );
@@ -162,49 +156,10 @@ public class TypeFactory {
     }
 
     public Type getType(TypeMirror mirror) {
-        final Type type = internalCreateType( mirror );
-        if ( type.getTypeElement() != null ) {
-
-            // Check if {@code this} type is a builder
-            final BuilderInfo buildTarget = builderProvider.findBuildTarget( mirror, elementUtils, typeUtils );
-            if ( buildTarget != null ) {
-                final TypeInitializer typeInitializer;
-                final TypeFinalizer typeFinalizer;
-
-                final TypeMirror enclosingType = buildTarget.getBuilderCreationMethod().getEnclosingElement().asType();
-                final Type initDeclarer = internalCreateType( enclosingType );
-                typeInitializer = new TypeInitializer( type, initDeclarer, buildTarget.getBuilderCreationMethod() );
-
-                final Type finalType = internalCreateType( buildTarget.getFinalType() );
-                typeFinalizer = new TypeFinalizer( finalType, buildTarget.getFinalizeMethod() );
-
-                type.asBuilder( typeInitializer, typeFinalizer );
-                finalType.withBuilder( typeInitializer, typeFinalizer );
-            }
-
-            // Check if {@code this} type is mapped by a builder
-            final BuilderInfo buildSource = builderProvider.findBuilder( mirror, elementUtils, typeUtils );
-            if ( buildSource != null ) {
-                final Type builderType = internalCreateType( buildSource.getBuilderType() );
-
-                final TypeInitializer initializer;
-                final TypeFinalizer typeFinalizer;
-
-                final TypeMirror enclosingType = buildSource.getBuilderCreationMethod().getEnclosingElement().asType();
-                final Type initEncloser = internalCreateType( enclosingType );
-
-                initializer = new TypeInitializer( builderType, initEncloser, buildSource.getBuilderCreationMethod() );
-                typeFinalizer = new TypeFinalizer( type, buildSource.getFinalizeMethod() );
-
-                type.withBuilder( initializer, typeFinalizer );
-                builderType.asBuilder( initializer, typeFinalizer );
-            }
-        }
-
-        return type;
+        return getType( mirror, false );
     }
 
-    private Type internalCreateType(TypeMirror mirror) {
+    public Type getType(TypeMirror mirror, boolean isBuilder) {
         if ( !canBeProcessed( mirror ) ) {
             throw new TypeHierarchyErroneousException( mirror );
         }
@@ -298,6 +253,7 @@ public class TypeFactory {
             packageName,
             name,
             qualifiedName,
+            isBuilder,
             isInterface,
             isEnumType,
             isIterableType,
@@ -496,9 +452,6 @@ public class TypeFactory {
                 implementationType.getPackageName(),
                 implementationType.getName(),
                 implementationType.getFullyQualifiedName(),
-                implementationType.getInitializer(),
-                implementationType.getFinalizer(),
-                implementationType.hasBuilder(),
                 implementationType.isBuilder(),
                 implementationType.isInterface(),
                 implementationType.isEnumType(),
@@ -506,7 +459,8 @@ public class TypeFactory {
                 implementationType.isCollectionType(),
                 implementationType.isMapType(),
                 implementationType.isStreamType(),
-                isImported( implementationType.getName(), implementationType.getFullyQualifiedName() )
+                isImported( implementationType.getName(),
+                implementationType.getFullyQualifiedName() )
             );
             return implementation.createNew( replacement );
         }

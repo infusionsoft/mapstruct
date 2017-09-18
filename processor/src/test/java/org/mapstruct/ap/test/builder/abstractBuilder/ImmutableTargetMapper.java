@@ -26,6 +26,4 @@ import org.mapstruct.ap.test.builder.abstractBuilder.ImmutableTarget.ImmutableTa
 @Mapper(unmappedTargetPolicy = ReportingPolicy.ERROR)
 public abstract class ImmutableTargetMapper {
     abstract ImmutableTarget fromThingTwo(Source two);
-
-    abstract Source fromImmutable(ImmutableTarget two);
 }

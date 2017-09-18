@@ -18,11 +18,12 @@
  */
 package org.mapstruct.ap.internal.model.source;
 
+import javax.lang.model.element.ExecutableElement;
+
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-
-import javax.lang.model.element.ExecutableElement;
 
 import org.mapstruct.ap.internal.model.common.Accessibility;
 import org.mapstruct.ap.internal.model.common.Parameter;
@@ -36,6 +37,19 @@ import org.mapstruct.ap.internal.util.Strings;
  * @author Sjaak Derksen
  */
 public class ForgedMethod implements Method {
+
+    public static ForgedMethod forIntermediateMapping(Method original, String methodSuffix, Type newReturnType) {
+        return new ForgedMethod( original.getName() + methodSuffix, original.getSourceParameters(),
+            newReturnType, original.getMappingOptions(), original.getMapperConfiguration(), original.getExecutable(),
+            original.getThrownTypes() );
+    }
+
+    public static ForgedMethod forBuildMapping(Type finalType, Type builderType, MapperConfiguration config) {
+        final List<Parameter> parameters = new ArrayList<Parameter>();
+        parameters.add( new Parameter( Strings.decapitalize( finalType.getName() ), builderType ) );
+        return new ForgedMethod( "build" + finalType.getName(), parameters, finalType, MappingOptions.empty(),
+            config, null, Collections.<Type>emptyList() );
+    }
 
     private final List<Parameter> parameters;
     private final Type returnType;
@@ -51,6 +65,24 @@ public class ForgedMethod implements Method {
     private final MappingOptions mappingOptions;
     private final ParameterProvidedMethods contextProvidedMethods;
     private final boolean forgedNameBased;
+
+    private ForgedMethod(String name, List<Parameter> parameters, Type returnType, MappingOptions mappingOptions,
+        MapperConfiguration mapperConfiguration, ExecutableElement positionHintElement, List<Type> thrownTypes) {
+        this.name = name;
+        this.parameters = parameters;
+        this.sourceParameters = Parameter.getSourceParameters( parameters );
+        this.contextParameters = Parameter.getContextParameters( parameters );
+        this.mappingTargetParameter = Parameter.getMappingTargetParameter( parameters );
+        this.history = null;
+        this.contextProvidedMethods = ParameterProvidedMethods.empty();
+        this.mapperConfiguration = mapperConfiguration;
+        this.returnType = returnType;
+        this.forgedNameBased = false;
+        this.positionHintElement = positionHintElement;
+        this.thrownTypes = thrownTypes;
+
+        this.mappingOptions = mappingOptions;
+    }
 
     /**
      * Creates a new forged method with the given name.

@@ -31,14 +31,15 @@ import javax.tools.Diagnostic.Kind;
 import org.mapstruct.ap.internal.model.common.TypeFactory;
 import org.mapstruct.ap.internal.option.Options;
 import org.mapstruct.ap.internal.processor.ModelElementProcessor.ProcessorContext;
+import org.mapstruct.ap.internal.model.BuilderFactory;
 import org.mapstruct.ap.internal.util.FormattingMessager;
-import org.mapstruct.ap.spi.LombokBuilderProvider;
 import org.mapstruct.ap.internal.util.Message;
 import org.mapstruct.ap.internal.util.RoundContext;
 import org.mapstruct.ap.internal.util.Services;
 import org.mapstruct.ap.internal.util.workarounds.TypesDecorator;
 import org.mapstruct.ap.internal.version.VersionInformation;
 import org.mapstruct.ap.spi.BuilderProvider;
+import org.mapstruct.ap.spi.DefaultBuilderProvider;
 
 /**
  * Default implementation of the processor context.
@@ -53,7 +54,7 @@ public class DefaultModelElementProcessorContext implements ProcessorContext {
     private final TypeFactory typeFactory;
     private final VersionInformation versionInformation;
     private final Types delegatingTypes;
-    private final BuilderProvider builderProvider;
+    private final BuilderFactory builderFactory;
 
     public DefaultModelElementProcessorContext(ProcessingEnvironment processingEnvironment, Options options,
             RoundContext roundContext) {
@@ -63,13 +64,17 @@ public class DefaultModelElementProcessorContext implements ProcessorContext {
         this.versionInformation = DefaultVersionInformation.fromProcessingEnvironment( processingEnvironment );
         this.delegatingTypes = new TypesDecorator( processingEnvironment, versionInformation );
 
-        this.builderProvider = Services.get( BuilderProvider.class, new LombokBuilderProvider() );
-
         this.typeFactory = new TypeFactory(
             processingEnvironment.getElementUtils(),
             delegatingTypes,
-            builderProvider,
             roundContext
+        );
+
+        this.builderFactory = new BuilderFactory(
+            typeFactory,
+            getElementUtils(),
+            delegatingTypes,
+            Services.getAll( BuilderProvider.class, new DefaultBuilderProvider() )
         );
         this.options = options;
     }
@@ -107,6 +112,11 @@ public class DefaultModelElementProcessorContext implements ProcessorContext {
     @Override
     public VersionInformation getVersionInformation() {
         return versionInformation;
+    }
+
+    @Override
+    public BuilderFactory getBuilderFactory() {
+        return builderFactory;
     }
 
     @Override

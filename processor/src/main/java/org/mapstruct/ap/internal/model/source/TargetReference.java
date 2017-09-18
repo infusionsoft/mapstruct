@@ -143,7 +143,7 @@ public class TargetReference {
             Parameter parameter = method.getMappingTargetParameter();
 
             boolean foundEntryMatch;
-            final Type resultType = method.getResultType();
+            Type resultType = method.getResultType();
 
             // there can be 4 situations
             // 1. Return type
@@ -232,10 +232,10 @@ public class TargetReference {
                 );
             }
             else {
-                // With builders, the {@code includingType} needs to be the builder type instead of the mapping
-                // output
-                nextType = typeFactory.getSingleParameter( (DeclaredType) initial.getMapToType().getTypeMirror(),
-                    toUse ).getType();
+                nextType = typeFactory.getSingleParameter(
+                    (DeclaredType) initial.getTypeMirror(),
+                    toUse
+                ).getType();
             }
             return nextType;
         }

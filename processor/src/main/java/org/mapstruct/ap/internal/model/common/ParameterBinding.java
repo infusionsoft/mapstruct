@@ -124,6 +124,10 @@ public class ParameterBinding {
         return result;
     }
 
+    public static List<ParameterBinding> empty() {
+        return new ArrayList<ParameterBinding>();
+    }
+
     /**
      * @param classTypeOf the type representing {@code Class<X>} for the target type {@code X}
      * @return a parameter binding representing a target type parameter

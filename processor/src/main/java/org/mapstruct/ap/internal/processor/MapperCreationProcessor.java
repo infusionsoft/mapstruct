@@ -18,12 +18,9 @@
  */
 package org.mapstruct.ap.internal.processor;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import static org.mapstruct.ap.internal.util.Collections.first;
+import static org.mapstruct.ap.internal.util.Collections.join;
+
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeKind;
@@ -32,7 +29,17 @@ import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.SortedSet;
+import java.util.TreeSet;
+
 import org.mapstruct.ap.internal.model.BeanMappingMethod;
+import org.mapstruct.ap.internal.model.BuilderMappingMethod;
+import org.mapstruct.ap.internal.model.BuilderMappingModel;
 import org.mapstruct.ap.internal.model.ContainerMappingMethod;
 import org.mapstruct.ap.internal.model.ContainerMappingMethodBuilder;
 import org.mapstruct.ap.internal.model.Decorator;
@@ -47,9 +54,10 @@ import org.mapstruct.ap.internal.model.MappingBuilderContext;
 import org.mapstruct.ap.internal.model.MappingMethod;
 import org.mapstruct.ap.internal.model.StreamMappingMethod;
 import org.mapstruct.ap.internal.model.ValueMappingMethod;
+import org.mapstruct.ap.internal.model.common.FormattingParameters;
 import org.mapstruct.ap.internal.model.common.Type;
 import org.mapstruct.ap.internal.model.common.TypeFactory;
-import org.mapstruct.ap.internal.model.common.FormattingParameters;
+import org.mapstruct.ap.internal.model.source.ForgedMethod;
 import org.mapstruct.ap.internal.model.source.MappingOptions;
 import org.mapstruct.ap.internal.model.source.Method;
 import org.mapstruct.ap.internal.model.source.SelectionParameters;
@@ -62,14 +70,12 @@ import org.mapstruct.ap.internal.prism.MapperPrism;
 import org.mapstruct.ap.internal.prism.MappingInheritanceStrategyPrism;
 import org.mapstruct.ap.internal.prism.NullValueMappingStrategyPrism;
 import org.mapstruct.ap.internal.processor.creation.MappingResolverImpl;
+import org.mapstruct.ap.internal.model.BuilderFactory;
 import org.mapstruct.ap.internal.util.FormattingMessager;
 import org.mapstruct.ap.internal.util.MapperConfiguration;
 import org.mapstruct.ap.internal.util.Message;
 import org.mapstruct.ap.internal.util.Strings;
 import org.mapstruct.ap.internal.version.VersionInformation;
-
-import static org.mapstruct.ap.internal.util.Collections.first;
-import static org.mapstruct.ap.internal.util.Collections.join;
 
 /**
  * A {@link ModelElementProcessor} which creates a {@link Mapper} from the given
@@ -79,6 +85,7 @@ import static org.mapstruct.ap.internal.util.Collections.join;
  */
 public class MapperCreationProcessor implements ModelElementProcessor<List<SourceMethod>, Mapper> {
 
+    private BuilderFactory builderFactory;
     private Elements elementUtils;
     private Types typeUtils;
     private FormattingMessager messager;
@@ -95,12 +102,14 @@ public class MapperCreationProcessor implements ModelElementProcessor<List<Sourc
         this.options = context.getOptions();
         this.versionInformation = context.getVersionInformation();
         this.typeFactory = context.getTypeFactory();
+        this.builderFactory = context.getBuilderFactory();
 
         MapperConfiguration mapperConfig = MapperConfiguration.getInstanceOn( mapperTypeElement );
         List<MapperReference> mapperReferences = initReferencedMappers( mapperTypeElement, mapperConfig );
 
-        MappingBuilderContext ctx = new MappingBuilderContext(
+        MappingBuilderContext mappingContext = new MappingBuilderContext(
             typeFactory,
+            builderFactory,
             elementUtils,
             typeUtils,
             messager,
@@ -119,7 +128,7 @@ public class MapperCreationProcessor implements ModelElementProcessor<List<Sourc
             Collections.unmodifiableList( sourceModel ),
             mapperReferences
         );
-        this.mappingContext = ctx;
+        this.mappingContext = mappingContext;
         return getMapper( mapperTypeElement, mapperConfig, sourceModel );
     }
 
@@ -266,6 +275,8 @@ public class MapperCreationProcessor implements ModelElementProcessor<List<Sourc
     private List<MappingMethod> getMappingMethods(MapperConfiguration mapperConfig, List<SourceMethod> methods) {
         List<MappingMethod> mappingMethods = new ArrayList<MappingMethod>();
 
+        final Map<Type, BuilderMappingModel> builderModels = builderFactory.getBuildersFromMethods(methods );
+
         for ( SourceMethod method : methods ) {
             if ( !method.overridesMethod() ) {
                 continue;
@@ -355,6 +366,38 @@ public class MapperCreationProcessor implements ModelElementProcessor<List<Sourc
                     streamMappingMethod.getFactoryMethod() != null || method.getResultType().isStreamType();
                 mappingMethods.add( streamMappingMethod );
             }
+            else if ( builderModels.containsKey( method.getResultType() ) ) {
+
+                final BuilderMappingModel builderModel = builderModels.get( method.getResultType() );
+                final Type builderType = builderModel.getBuilderType();
+                final Type finalType = builderModel.getFinalType();
+
+                // Builder targets are immutable, so we can't create a {@link BeanMappingMethod} directly.
+
+                //
+                // 1. Create a forged {@link BeanMappingMethod} that maps from source parameters to the builder.
+                //
+                final ForgedMethod forgedMethod = mappingContext.startForgedMethod(
+                    ForgedMethod.forIntermediateMapping( method, "ForBuilder", builderType )
+                );
+
+                final BeanMappingMethod sourceToBuilder;
+                sourceToBuilder = null;//builderFactory.getBuilderMappingMethod( mappingContext, builderModel, forgedMethod );
+                mappingMethods.add( sourceToBuilder );
+                mappingContext.finishForgedMethod( forgedMethod );
+                hasFactoryMethod = true;
+
+                //
+                // 2. Create a {@link BuilderMappingMethod} that takes in all source parameters, invokes the method
+                //    from step 1 (above), invokes the {@code build()} method, and returns the result.
+                //
+                final BuilderMappingMethod builderMappingMethod = BuilderMappingMethod.builder()
+                    .declaredMethod( method )
+                    .builderModel( builderModel )
+                    .builderMappingMethod( forgedMethod )
+                    .build();
+                mappingMethods.add( builderMappingMethod );
+            }
             else {
 
                 NullValueMappingStrategyPrism nullValueMappingStrategy = null;
@@ -364,14 +407,13 @@ public class MapperCreationProcessor implements ModelElementProcessor<List<Sourc
                     nullValueMappingStrategy = mappingOptions.getBeanMapping().getNullValueMappingStrategy();
                     selectionParameters = mappingOptions.getBeanMapping().getSelectionParameters();
                 }
-                BeanMappingMethod.Builder builder = new BeanMappingMethod.Builder();
-                BeanMappingMethod beanMappingMethod = builder
+
+                final BeanMappingMethod beanMappingMethod = new BeanMappingMethod.Builder()
                     .mappingContext( mappingContext )
                     .sourceMethod( method )
                     .nullValueMappingStrategy( nullValueMappingStrategy )
                     .selectionParameters( selectionParameters )
                     .build();
-
                 if ( beanMappingMethod != null ) {
                     // We can consider that the bean mapping method can always be constructed. If there is a problem
                     // it would have been reported in its build

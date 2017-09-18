@@ -29,6 +29,7 @@ public enum Message {
 
     // CHECKSTYLE:OFF
     BEANMAPPING_NO_ELEMENTS( "'nullValueMappingStrategy', 'resultType' and 'qualifiedBy' are undefined in @BeanMapping, define at least one of them." ),
+    BEANMAPPING_BUILDER_MULTIPLE_SOURCE( "Methods involving builders may only have a single input parameter:  %s." ),
     BEANMAPPING_NOT_ASSIGNABLE( "%s not assignable to: %s." ),
     BEANMAPPING_ABSTRACT( "The result type %s may not be an abstract class nor interface." ),
     BEANMAPPING_UNKNOWN_PROPERTY_IN_RESULTTYPE( "Unknown property \"%s\" in result type %s. Did you mean \"%s\"?" ),
