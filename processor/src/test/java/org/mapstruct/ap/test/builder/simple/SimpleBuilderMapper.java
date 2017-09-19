@@ -21,7 +21,6 @@ package org.mapstruct.ap.test.builder.simple;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
-
 @Mapper(unmappedTargetPolicy = ReportingPolicy.ERROR)
 public interface SimpleBuilderMapper {
 

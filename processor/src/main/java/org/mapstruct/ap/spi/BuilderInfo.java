@@ -31,25 +31,23 @@ import javax.lang.model.type.TypeMirror;
  */
 public class BuilderInfo {
 
-    private final TypeMirror finalType;
     private final TypeMirror builderType;
-    private final ExecutableElement builderCreationMethod;
-    private final ExecutableElement finalizeMethod;
-    private final ExecutableElement thawMethod;
+    private final TypeMirror finalType;
+    private final String builderMethodName;
+    private final String buildMethodName;
+    private final String thawMethodName;
 
     private BuilderInfo(TypeMirror finalType, TypeMirror builderType,
-        ExecutableElement builderCreationMethod,
-        ExecutableElement finalizeMethod,
-        ExecutableElement thawMethod) {
+        String ) {
 
-        this.thawMethod = thawMethod;
+        this.thawMethodName = thawMethodName;
         assert finalType != null : "Target type must not be null";
         assert builderType != null : "Builder type must not be null";
-        assert finalizeMethod != null : "Build method must not be null";
+        assert buildMethodName != null : "Build method must not be null";
         this.builderType = builderType;
         this.finalType = finalType;
-        this.builderCreationMethod = builderCreationMethod;
-        this.finalizeMethod = finalizeMethod;
+        this.builderMethodName = builderMethodName;
+        this.buildMethodName = buildMethodName;
     }
 
     public TypeMirror getFinalType() {
@@ -60,16 +58,16 @@ public class BuilderInfo {
         return builderType;
     }
 
-    public ExecutableElement getBuilderCreationMethod() {
-        return builderCreationMethod;
+    public ExecutableElement getBuilderMethodName() {
+        return builderMethodName;
     }
 
-    public ExecutableElement getFinalizeMethod() {
-        return finalizeMethod;
+    public ExecutableElement getBuildMethodName() {
+        return buildMethodName;
     }
 
-    public ExecutableElement getThawMethod() {
-        return thawMethod;
+    public ExecutableElement getThawMethodName() {
+        return thawMethodName;
     }
 
     public static BuilderInfoBuilder builder() {

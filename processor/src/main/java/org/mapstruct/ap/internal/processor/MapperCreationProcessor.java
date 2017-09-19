@@ -382,7 +382,7 @@ public class MapperCreationProcessor implements ModelElementProcessor<List<Sourc
                 );
 
                 final BeanMappingMethod sourceToBuilder;
-                sourceToBuilder = null;//builderFactory.getBuilderMappingMethod( mappingContext, builderModel, forgedMethod );
+                sourceToBuilder = builderFactory.getBuilderMappingMethod( mappingContext, builderModel, forgedMethod );
                 mappingMethods.add( sourceToBuilder );
                 mappingContext.finishForgedMethod( forgedMethod );
                 hasFactoryMethod = true;

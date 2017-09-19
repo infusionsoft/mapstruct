@@ -1,11 +1,10 @@
 package org.mapstruct.ap.internal.model;
 
-import org.mapstruct.ap.internal.model.BuilderMappingModel;
-import org.mapstruct.ap.internal.model.MethodReference;
 import org.mapstruct.ap.internal.model.common.Parameter;
 import org.mapstruct.ap.internal.model.common.ParameterBinding;
 import org.mapstruct.ap.internal.model.common.Type;
 import org.mapstruct.ap.internal.model.common.TypeFactory;
+import org.mapstruct.ap.internal.model.source.ForgedMethod;
 import org.mapstruct.ap.internal.model.source.Method;
 import org.mapstruct.ap.internal.model.source.SourceMethod;
 import org.mapstruct.ap.spi.BuilderInfo;
@@ -76,20 +75,20 @@ public class BuilderFactory {
 
     }
 
-//    public BeanMappingMethod getBuilderMappingMethod(MappingBuilderContext context, BuilderMappingModel model,
-//        ForgedMethod forgedMappingMethod) {
-//
-//        return new BeanMappingMethod.Builder()
-//            .mappingContext( context )
-//            .forgedMethod( forgedMappingMethod )
-//            .factoryMethod( model.getBuilderCreationMethod() )
-//            .build();
-//    }
+    public BeanMappingMethod getBuilderMappingMethod(MappingBuilderContext context, BuilderMappingModel model,
+        ForgedMethod forgedMappingMethod) {
+
+        return new BeanMappingMethod.Builder()
+            .mappingContext( context )
+            .forgedMethod( forgedMappingMethod )
+            .factoryMethod( model.getBuilderCreationMethod() )
+            .build();
+    }
 
     private MethodReference getBuilderMethodReference(BuilderInfo builderInfo, Type builderType, Type finalType) {
         //ericm:fix Fragile, could this come from a type other than finalType?
         return MethodReference.forLocalMethod(
-            sourceMethod( finalType, builderType, builderInfo.getBuilderCreationMethod() ),
+            sourceMethod( finalType, builderType, builderInfo.getBuilderMethodName() ),
             Collections.<ParameterBinding>emptyList()
         );
     }
@@ -108,15 +107,15 @@ public class BuilderFactory {
 
     private MethodReference getBuildMethodReference(BuilderInfo builderInfo, Type builderType, Type finalType) {
         return MethodReference.forParameterProvidedMethod(
-            sourceMethod( builderType, finalType, builderInfo.getFinalizeMethod() ),
+            sourceMethod( builderType, finalType, builderInfo.getBuildMethodName() ),
             new Parameter( VAR_NAME, builderType )
         );
     }
 
     private MethodReference getThawMethodReference(BuilderInfo builderInfo, Type builderType, Type finalType) {
-        if ( builderInfo.getThawMethod() != null ) {
+        if ( builderInfo.getThawMethodName() != null ) {
             return MethodReference.forLocalMethod(
-                sourceMethod( finalType, builderType, builderInfo.getThawMethod() ),
+                sourceMethod( finalType, builderType, builderInfo.getThawMethodName() ),
                 ParameterBinding.empty()
             );
         }
