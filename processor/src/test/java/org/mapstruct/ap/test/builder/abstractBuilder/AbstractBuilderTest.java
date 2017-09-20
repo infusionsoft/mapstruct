@@ -24,7 +24,9 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.mapstruct.ap.test.builder.BuilderTests;
+import org.mapstruct.ap.test.naming.spi.CustomAccessorNamingStrategy;
 import org.mapstruct.ap.testutil.WithClasses;
+import org.mapstruct.ap.testutil.WithServiceImplementation;
 import org.mapstruct.ap.testutil.runner.AnnotationProcessorTestRunner;
 import org.mapstruct.factory.Mappers;
 
@@ -35,6 +37,7 @@ import org.mapstruct.factory.Mappers;
 @WithClasses({ Target.class, AbstractTargetBuilder.class, ImmutableTarget.class, Source.class })
 @RunWith(AnnotationProcessorTestRunner.class)
 @Category(BuilderTests.class)
+@WithServiceImplementation(SimpleBuilderProvider.class)
 public class AbstractBuilderTest {
 
     /**

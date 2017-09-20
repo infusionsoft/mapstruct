@@ -18,10 +18,6 @@
  */
 package org.mapstruct.ap.spi;
 
-import org.mapstruct.ap.internal.model.BuilderMappingModel;
-
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
 /**
@@ -32,41 +28,41 @@ import javax.lang.model.type.TypeMirror;
 public class BuilderInfo {
 
     private final TypeMirror builderType;
-    private final TypeMirror finalType;
+    private final TypeMirror resultType;
     private final String builderMethodName;
     private final String buildMethodName;
     private final String thawMethodName;
 
-    private BuilderInfo(TypeMirror finalType, TypeMirror builderType,
-        String ) {
+    private BuilderInfo(TypeMirror resultType, TypeMirror builderType,
+        String builderMethodName, String buildMethodName, String thawMethodName ) {
 
         this.thawMethodName = thawMethodName;
-        assert finalType != null : "Target type must not be null";
+        assert resultType != null : "Target type must not be null";
         assert builderType != null : "Builder type must not be null";
         assert buildMethodName != null : "Build method must not be null";
         this.builderType = builderType;
-        this.finalType = finalType;
+        this.resultType = resultType;
         this.builderMethodName = builderMethodName;
         this.buildMethodName = buildMethodName;
     }
 
-    public TypeMirror getFinalType() {
-        return finalType;
+    public TypeMirror getResultType() {
+        return resultType;
     }
 
     public TypeMirror getBuilderType() {
         return builderType;
     }
 
-    public ExecutableElement getBuilderMethodName() {
+    public String getBuilderMethodName() {
         return builderMethodName;
     }
 
-    public ExecutableElement getBuildMethodName() {
+    public String getBuildMethodName() {
         return buildMethodName;
     }
 
-    public ExecutableElement getThawMethodName() {
+    public String getThawMethodName() {
         return thawMethodName;
     }
 
@@ -75,72 +71,51 @@ public class BuilderInfo {
     }
 
     public static class BuilderInfoBuilder {
-        private TypeMirror targetType;
         private TypeMirror builderType;
-        private ExecutableElement builderCreationMethod;
-        private ExecutableElement buildMethod;
-        private ExecutableElement thawMethod;
-
-        public BuilderInfoBuilder targetType(TypeElement targetType) {
-            this.targetType = targetType.asType();
-            return this;
-        }
-
-        public BuilderInfoBuilder builderType(TypeElement builderType) {
-            this.builderType = builderType.asType();
-            return this;
-        }
-
-        public BuilderInfoBuilder targetType(TypeMirror targetType) {
-            this.targetType = targetType;
-            return this;
-        }
+        private TypeMirror resultType;
+        private String builderMethodName;
+        private String buildMethodName;
+        private String thawMethodName;
 
         public BuilderInfoBuilder builderType(TypeMirror builderType) {
             this.builderType = builderType;
             return this;
         }
 
-        public BuilderInfoBuilder builderCreationMethod(ExecutableElement builderCreationMethod) {
-            this.builderCreationMethod = builderCreationMethod;
+        public BuilderInfoBuilder resultType(TypeMirror finalType) {
+            this.resultType = finalType;
             return this;
         }
 
-        public BuilderInfoBuilder buildMethod(ExecutableElement buildMethod) {
-            this.buildMethod = buildMethod;
+        public BuilderInfoBuilder builderMethodName(String builderMethodName) {
+            this.builderMethodName = builderMethodName;
             return this;
         }
 
-        public TypeMirror targetType() {
-            return targetType;
+        public BuilderInfoBuilder buildMethodName(String buildMethodName) {
+            this.buildMethodName = buildMethodName;
+            return this;
         }
 
-        public TypeMirror builderType() {
-            return builderType;
-        }
-
-        public ExecutableElement buildMethod() {
-            return this.buildMethod;
-        }
-
-        public ExecutableElement builderCreationMethod() {
-            return builderCreationMethod;
+        public BuilderInfoBuilder thawMethodName(String thawMethodName) {
+            this.thawMethodName = thawMethodName;
+            return this;
         }
 
         public BuilderInfoBuilder merge(BuilderInfoBuilder... moreOptions) {
             for ( BuilderInfoBuilder builder : moreOptions ) {
-                this.buildMethod = firstNonNull( builder.buildMethod, this.buildMethod );
-                this.builderCreationMethod = firstNonNull( builder.builderCreationMethod, this.builderCreationMethod );
+                this.resultType = firstNonNull( builder.resultType, this.resultType );
                 this.builderType = firstNonNull( builder.builderType, this.builderType );
-                this.targetType = firstNonNull( builder.targetType, this.targetType );
-                this.thawMethod = firstNonNull( builder.thawMethod, this.thawMethod );
+                this.buildMethodName = firstNonNull( builder.buildMethodName, this.buildMethodName );
+                this.builderMethodName = firstNonNull( builder.builderMethodName, this.builderMethodName );
+                this.thawMethodName = firstNonNull( builder.thawMethodName, this.thawMethodName );
             }
 
             return this;
         }
 
         public BuilderInfo build() {
-            return new BuilderInfo( targetType, builderType, builderCreationMethod, buildMethod, thawMethod );
+            return new BuilderInfo( resultType, builderType, builderMethodName, buildMethodName, thawMethodName );
         }
     }
 

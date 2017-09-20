@@ -18,6 +18,7 @@
  */
 package org.mapstruct.ap.internal.model.common;
 
+import org.mapstruct.ap.internal.model.BuilderFactory;
 import org.mapstruct.ap.internal.util.AnnotationProcessingException;
 import org.mapstruct.ap.internal.util.Collections;
 import org.mapstruct.ap.internal.util.JavaStreamConstants;
@@ -25,6 +26,7 @@ import org.mapstruct.ap.internal.util.RoundContext;
 import org.mapstruct.ap.internal.util.accessor.Accessor;
 import org.mapstruct.ap.shared.TypeHierarchyErroneousException;
 import org.mapstruct.ap.spi.AstModifyingAnnotationProcessor;
+import org.mapstruct.ap.spi.BuilderInfo;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -73,6 +75,7 @@ public class TypeFactory {
 
     private final Elements elementUtils;
     private final Types typeUtils;
+    private final BuilderFactory builderFactory;
     private final RoundContext roundContext;
 
     private final TypeMirror iterableType;
@@ -83,7 +86,10 @@ public class TypeFactory {
     private final Map<String, ImplementationType> implementationTypes = new HashMap<String, ImplementationType>();
     private final Map<String, String> importedQualifiedTypesBySimpleName = new HashMap<String, String>();
 
-    public TypeFactory(Elements elementUtils, Types typeUtils, RoundContext roundContext) {
+    public TypeFactory(Elements elementUtils, Types typeUtils, BuilderFactory builderFactory,
+        RoundContext roundContext) {
+
+        this.builderFactory = builderFactory;
         this.elementUtils = elementUtils;
         this.typeUtils = typeUtils;
         this.roundContext = roundContext;
@@ -156,10 +162,6 @@ public class TypeFactory {
     }
 
     public Type getType(TypeMirror mirror) {
-        return getType( mirror, false );
-    }
-
-    public Type getType(TypeMirror mirror, boolean isBuilder) {
         if ( !canBeProcessed( mirror ) ) {
             throw new TypeHierarchyErroneousException( mirror );
         }
@@ -185,16 +187,22 @@ public class TypeFactory {
 
             isEnumType = declaredType.asElement().getKind() == ElementKind.ENUM;
             isInterface = declaredType.asElement().getKind() == ElementKind.INTERFACE;
-            name = declaredType.asElement().getSimpleName().toString();
 
             typeElement = (TypeElement) declaredType.asElement();
 
             if ( typeElement != null ) {
                 packageName = elementUtils.getPackageOf( typeElement ).getQualifiedName().toString();
                 qualifiedName = typeElement.getQualifiedName().toString();
+                final Element parent = typeElement.getEnclosingElement();
+                if ( parent != null && parent.getKind() == ElementKind.CLASS ) {
+                    name = parent.getSimpleName() + "." + typeElement.getSimpleName();
+                } else {
+                    name = typeElement.getSimpleName().toString();
+                }
             }
             else {
                 packageName = null;
+                name = declaredType.asElement().getSimpleName().toString();
                 qualifiedName = name;
             }
 
@@ -243,6 +251,20 @@ public class TypeFactory {
             isImported = false;
         }
 
+        TypeMirror builtBy = null;
+        TypeMirror builds = null;
+        if ( typeElement != null ) {
+            final BuilderInfo builtByInfo = builderFactory.findBuilderForType( mirror );
+            if ( builtByInfo != null ) {
+                builtBy = builtByInfo.getBuilderType();
+            }
+
+            final BuilderInfo buildsInfo = builderFactory.findBuildTargetForType( mirror );
+            if ( buildsInfo != null ) {
+                builds = buildsInfo.getResultType();
+            }
+        }
+
         return new Type(
             typeUtils, elementUtils, this,
             mirror,
@@ -253,7 +275,8 @@ public class TypeFactory {
             packageName,
             name,
             qualifiedName,
-            isBuilder,
+            builtBy,
+            builds,
             isInterface,
             isEnumType,
             isIterableType,
@@ -452,7 +475,8 @@ public class TypeFactory {
                 implementationType.getPackageName(),
                 implementationType.getName(),
                 implementationType.getFullyQualifiedName(),
-                implementationType.isBuilder(),
+                implementationType.getBuiltBy(),
+                implementationType.getBuilds(),
                 implementationType.isInterface(),
                 implementationType.isEnumType(),
                 implementationType.isIterableType(),

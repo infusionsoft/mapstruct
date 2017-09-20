@@ -20,9 +20,6 @@ package org.mapstruct.ap.internal.model.common;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.lang.annotation.Annotation;
-import java.util.List;
-
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
@@ -30,6 +27,9 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVisitor;
 import javax.tools.Diagnostic;
+
+import java.lang.annotation.Annotation;
+import java.util.List;
 
 import org.junit.Test;
 import org.mapstruct.ap.internal.util.FormattingMessager;
@@ -116,25 +116,26 @@ public class DefaultConversionContextTest {
 
     private Type typeWithFQN(String fullQualifiedName) {
         return new Type(
-                        null,
-                        null,
-                        null,
-                        voidTypeMirror,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        fullQualifiedName,
-                        false,
-                        false,
-                        false,
-                        false,
-                        false,
-                        false,
-                        false,
-                        false );
+            null,
+            null,
+            null,
+            voidTypeMirror,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            fullQualifiedName,
+            null,
+            null,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false );
     }
 
     private static class StatefulMessagerMock implements FormattingMessager {

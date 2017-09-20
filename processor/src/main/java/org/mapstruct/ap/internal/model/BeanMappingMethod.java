@@ -38,6 +38,7 @@ import javax.lang.model.type.DeclaredType;
 import javax.tools.Diagnostic;
 
 import org.eclipse.jdt.core.dom.MethodRef;
+import org.mapstruct.ObjectFactory;
 import org.mapstruct.ap.internal.model.PropertyMapping.ConstantMappingBuilder;
 import org.mapstruct.ap.internal.model.PropertyMapping.JavaExpressionMappingBuilder;
 import org.mapstruct.ap.internal.model.PropertyMapping.PropertyMappingBuilder;
@@ -67,6 +68,7 @@ import org.mapstruct.ap.internal.util.Message;
 import org.mapstruct.ap.internal.util.Strings;
 import org.mapstruct.ap.internal.util.accessor.Accessor;
 import org.mapstruct.ap.internal.util.accessor.ExecutableElementAccessor;
+import org.mapstruct.ap.spi.BuilderInfo;
 
 /**
  * A {@link MappingMethod} implemented by a {@link Mapper} class which maps one bean type to another, optionally
@@ -80,12 +82,13 @@ public class BeanMappingMethod extends NormalTypeMappingMethod {
     private final Map<String, List<PropertyMapping>> mappingsByParameter;
     private final List<PropertyMapping> constantMappings;
     private final Type resultType;
+    private final Type mapToType;
+    private final String buildMethodName;
 
     public static class Builder {
 
         private MappingBuilderContext ctx;
         private Method method;
-        private MethodReference factoryMethod;
         private Map<String, Accessor> unprocessedTargetProperties;
         private Set<String> targetProperties;
         private final List<PropertyMapping> propertyMappings = new ArrayList<PropertyMapping>();
@@ -96,11 +99,6 @@ public class BeanMappingMethod extends NormalTypeMappingMethod {
         private Map<String, List<Mapping>> methodMappings;
         private SingleMappingByTargetPropertyNameFunction singleMapping;
         private final Map<String, List<Mapping>> unprocessedDefinedTargets = new HashMap<String, List<Mapping>>();
-
-        public Builder factoryMethod(MethodReference factoryMethod) {
-            this.factoryMethod = factoryMethod;
-            return this;
-        }
 
         public Builder mappingContext(MappingBuilderContext mappingContext) {
             this.ctx = mappingContext;
@@ -167,10 +165,10 @@ public class BeanMappingMethod extends NormalTypeMappingMethod {
             // mapNullToDefault
             boolean mapNullToDefault = method.getMapperConfiguration().isMapToDefault( nullValueMappingStrategy );
 
-
             BeanMappingPrism beanMappingPrism = BeanMappingPrism.getInstanceOn( method.getExecutable() );
 
-            if ( factoryMethod == null && !method.isUpdateMethod() ) {
+            MethodReference factoryMethod = null;
+            if ( !method.isUpdateMethod() ) {
                 factoryMethod = ctx.getMappingResolver().getFactoryMethod(
                     method,
                     method.getResultType(),
@@ -199,7 +197,7 @@ public class BeanMappingMethod extends NormalTypeMappingMethod {
                             Message.BEANMAPPING_NOT_ASSIGNABLE, resultType, method.getResultType()
                         );
                     }
-                    else if ( !resultType.hasEmptyAccessibleContructor() ) {
+                    else if ( !resultType.hasBuilder() && !resultType.hasEmptyAccessibleContructor() ) {
                         ctx.getMessager().printMessage(
                             method.getExecutable(),
                             beanMappingPrism.mirror,
@@ -215,13 +213,30 @@ public class BeanMappingMethod extends NormalTypeMappingMethod {
                         method.getReturnType()
                     );
                 }
-                else if ( !method.isUpdateMethod() && !method.getReturnType().hasEmptyAccessibleContructor() ) {
+                else if ( !method.isUpdateMethod() && !method.getReturnType().hasBuilder()
+                    && !method.getReturnType().hasEmptyAccessibleContructor() ) {
+
                     ctx.getMessager().printMessage(
                         method.getExecutable(),
                         Message.GENERAL_NO_SUITABLE_CONSTRUCTOR,
                         method.getReturnType()
                     );
                 }
+            }
+
+
+            String buildMethodName = null;
+            Type mapToType = null;
+            final Type finalType = firstNonNull( resultType, method.getResultType() );
+            if ( finalType != null && finalType.hasBuilder() ) {
+                final BuilderInfo info = ctx.getBuilderFactory().findBuilderForType( finalType.getTypeMirror() );
+                buildMethodName = info.getBuildMethodName();
+                mapToType = ctx.getTypeFactory().getType( info.getBuilderType() );
+                factoryMethod = ctx.getMappingResolver().getFactoryMethod(
+                    method,
+                    mapToType,
+                    selectionParameters
+                );
             }
 
             sortPropertyMappingsByDependencies();
@@ -242,6 +257,8 @@ public class BeanMappingMethod extends NormalTypeMappingMethod {
                 factoryMethod,
                 mapNullToDefault,
                 resultType,
+                mapToType,
+                buildMethodName,
                 beforeMappingMethods,
                 afterMappingMethods
             );
@@ -746,6 +763,8 @@ public class BeanMappingMethod extends NormalTypeMappingMethod {
                               MethodReference factoryMethod,
                               boolean mapNullToDefault,
                               Type resultType,
+                              Type mapToType,
+                              String buildMethodName,
                               List<LifecycleCallbackMethodReference> beforeMappingReferences,
                               List<LifecycleCallbackMethodReference> afterMappingReferences) {
         super(
@@ -757,6 +776,7 @@ public class BeanMappingMethod extends NormalTypeMappingMethod {
             afterMappingReferences
         );
 
+        this.buildMethodName = buildMethodName;
         this.propertyMappings = propertyMappings;
 
         // intialize constant mappings as all mappings, but take out the ones that can be contributed to a
@@ -774,6 +794,7 @@ public class BeanMappingMethod extends NormalTypeMappingMethod {
             }
         }
         this.resultType = resultType;
+        this.mapToType = mapToType;
     }
 
     public List<PropertyMapping> getPropertyMappings() {
@@ -787,6 +808,14 @@ public class BeanMappingMethod extends NormalTypeMappingMethod {
     public List<PropertyMapping> propertyMappingsByParameter(Parameter parameter) {
         // issues: #909 and #1244. FreeMarker has problem getting values from a map when the search key is size or value
         return mappingsByParameter.get( parameter.getName() );
+    }
+
+    public String getBuildMethodName() {
+        return buildMethodName;
+    }
+
+    public Type getMapToType() {
+        return firstNonNull( mapToType, getResultType() );
     }
 
     @Override

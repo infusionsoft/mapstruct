@@ -34,7 +34,7 @@
     </#if>
 
     <#if !existingInstanceMapping>
-        <@includeModel object=resultType/> ${resultName} = <#if factoryMethod??><@includeModel object=factoryMethod targetType=resultType/><#else>new <@includeModel object=resultType/>()</#if>;
+        <@includeModel object=mapToType/> ${resultName} = <#if factoryMethod??><@includeModel object=factoryMethod targetType=resultType/><#else>new <@includeModel object=mapToType/>()</#if>;
 
     </#if>
     <#list beforeMappingReferencesWithMappingTarget as callback>
@@ -76,8 +76,10 @@
     	</#if>
     	<@includeModel object=callback targetBeanName=resultName targetType=resultType/>
     </#list>
-    <#if returnType.name != "void">
+    <#if resultType.hasBuilder()>
 
+    return ${resultName}.${buildMethodName}();
+    <#elseif returnType.name != "void">
     return ${resultName};
     </#if>
 }

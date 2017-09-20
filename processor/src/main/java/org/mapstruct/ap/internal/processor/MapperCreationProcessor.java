@@ -33,13 +33,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
 import org.mapstruct.ap.internal.model.BeanMappingMethod;
-import org.mapstruct.ap.internal.model.BuilderMappingMethod;
-import org.mapstruct.ap.internal.model.BuilderMappingModel;
+import org.mapstruct.ap.internal.model.BuilderFactory;
 import org.mapstruct.ap.internal.model.ContainerMappingMethod;
 import org.mapstruct.ap.internal.model.ContainerMappingMethodBuilder;
 import org.mapstruct.ap.internal.model.Decorator;
@@ -57,7 +55,6 @@ import org.mapstruct.ap.internal.model.ValueMappingMethod;
 import org.mapstruct.ap.internal.model.common.FormattingParameters;
 import org.mapstruct.ap.internal.model.common.Type;
 import org.mapstruct.ap.internal.model.common.TypeFactory;
-import org.mapstruct.ap.internal.model.source.ForgedMethod;
 import org.mapstruct.ap.internal.model.source.MappingOptions;
 import org.mapstruct.ap.internal.model.source.Method;
 import org.mapstruct.ap.internal.model.source.SelectionParameters;
@@ -70,7 +67,6 @@ import org.mapstruct.ap.internal.prism.MapperPrism;
 import org.mapstruct.ap.internal.prism.MappingInheritanceStrategyPrism;
 import org.mapstruct.ap.internal.prism.NullValueMappingStrategyPrism;
 import org.mapstruct.ap.internal.processor.creation.MappingResolverImpl;
-import org.mapstruct.ap.internal.model.BuilderFactory;
 import org.mapstruct.ap.internal.util.FormattingMessager;
 import org.mapstruct.ap.internal.util.MapperConfiguration;
 import org.mapstruct.ap.internal.util.Message;
@@ -275,8 +271,6 @@ public class MapperCreationProcessor implements ModelElementProcessor<List<Sourc
     private List<MappingMethod> getMappingMethods(MapperConfiguration mapperConfig, List<SourceMethod> methods) {
         List<MappingMethod> mappingMethods = new ArrayList<MappingMethod>();
 
-        final Map<Type, BuilderMappingModel> builderModels = builderFactory.getBuildersFromMethods(methods );
-
         for ( SourceMethod method : methods ) {
             if ( !method.overridesMethod() ) {
                 continue;
@@ -365,38 +359,6 @@ public class MapperCreationProcessor implements ModelElementProcessor<List<Sourc
                 hasFactoryMethod =
                     streamMappingMethod.getFactoryMethod() != null || method.getResultType().isStreamType();
                 mappingMethods.add( streamMappingMethod );
-            }
-            else if ( builderModels.containsKey( method.getResultType() ) ) {
-
-                final BuilderMappingModel builderModel = builderModels.get( method.getResultType() );
-                final Type builderType = builderModel.getBuilderType();
-                final Type finalType = builderModel.getFinalType();
-
-                // Builder targets are immutable, so we can't create a {@link BeanMappingMethod} directly.
-
-                //
-                // 1. Create a forged {@link BeanMappingMethod} that maps from source parameters to the builder.
-                //
-                final ForgedMethod forgedMethod = mappingContext.startForgedMethod(
-                    ForgedMethod.forIntermediateMapping( method, "ForBuilder", builderType )
-                );
-
-                final BeanMappingMethod sourceToBuilder;
-                sourceToBuilder = builderFactory.getBuilderMappingMethod( mappingContext, builderModel, forgedMethod );
-                mappingMethods.add( sourceToBuilder );
-                mappingContext.finishForgedMethod( forgedMethod );
-                hasFactoryMethod = true;
-
-                //
-                // 2. Create a {@link BuilderMappingMethod} that takes in all source parameters, invokes the method
-                //    from step 1 (above), invokes the {@code build()} method, and returns the result.
-                //
-                final BuilderMappingMethod builderMappingMethod = BuilderMappingMethod.builder()
-                    .declaredMethod( method )
-                    .builderModel( builderModel )
-                    .builderMappingMethod( forgedMethod )
-                    .build();
-                mappingMethods.add( builderMappingMethod );
             }
             else {
 

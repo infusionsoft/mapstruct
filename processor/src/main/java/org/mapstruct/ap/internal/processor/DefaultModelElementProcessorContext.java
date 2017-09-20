@@ -28,10 +28,10 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic.Kind;
 
+import org.mapstruct.ap.internal.model.BuilderFactory;
 import org.mapstruct.ap.internal.model.common.TypeFactory;
 import org.mapstruct.ap.internal.option.Options;
 import org.mapstruct.ap.internal.processor.ModelElementProcessor.ProcessorContext;
-import org.mapstruct.ap.internal.model.BuilderFactory;
 import org.mapstruct.ap.internal.util.FormattingMessager;
 import org.mapstruct.ap.internal.util.Message;
 import org.mapstruct.ap.internal.util.RoundContext;
@@ -39,7 +39,6 @@ import org.mapstruct.ap.internal.util.Services;
 import org.mapstruct.ap.internal.util.workarounds.TypesDecorator;
 import org.mapstruct.ap.internal.version.VersionInformation;
 import org.mapstruct.ap.spi.BuilderProvider;
-import org.mapstruct.ap.spi.DefaultBuilderProvider;
 
 /**
  * Default implementation of the processor context.
@@ -64,18 +63,19 @@ public class DefaultModelElementProcessorContext implements ProcessorContext {
         this.versionInformation = DefaultVersionInformation.fromProcessingEnvironment( processingEnvironment );
         this.delegatingTypes = new TypesDecorator( processingEnvironment, versionInformation );
 
+        this.builderFactory = new BuilderFactory(
+            getElementUtils(),
+            delegatingTypes,
+            Services.getAll( BuilderProvider.class )
+        );
+
         this.typeFactory = new TypeFactory(
             processingEnvironment.getElementUtils(),
             delegatingTypes,
+            builderFactory,
             roundContext
         );
 
-        this.builderFactory = new BuilderFactory(
-            typeFactory,
-            getElementUtils(),
-            delegatingTypes,
-            Services.getAll( BuilderProvider.class, new DefaultBuilderProvider() )
-        );
         this.options = options;
     }
 

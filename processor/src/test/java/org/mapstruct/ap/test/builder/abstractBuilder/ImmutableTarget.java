@@ -23,13 +23,13 @@ public class ImmutableTarget implements Target {
     private final String foo;
     private final Integer bar;
 
-    public ImmutableTarget(ImmutableTargetBuilder thingOneBuilder) {
+    public ImmutableTarget(Builder thingOneBuilder) {
         this.foo = thingOneBuilder.foo;
         this.bar = thingOneBuilder.bar;
     }
 
-    public static ImmutableTargetBuilder builder() {
-        return new ImmutableTargetBuilder();
+    public static Builder builder() {
+        return new Builder();
     }
 
     @Override
@@ -42,10 +42,10 @@ public class ImmutableTarget implements Target {
         return bar;
     }
 
-    public static class ImmutableTargetBuilder extends AbstractTargetBuilder<ImmutableTarget> {
+    public static class Builder extends AbstractTargetBuilder<ImmutableTarget> {
         private Integer bar;
 
-        public ImmutableTargetBuilder bar(Integer bar) {
+        public Builder bar(Integer bar) {
             this.bar = bar;
             return this;
         }

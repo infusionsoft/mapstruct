@@ -49,6 +49,7 @@ import org.mapstruct.ap.internal.util.Filters;
 import org.mapstruct.ap.internal.util.Nouns;
 import org.mapstruct.ap.internal.util.accessor.Accessor;
 import org.mapstruct.ap.internal.util.accessor.ExecutableElementAccessor;
+import org.mapstruct.ap.spi.BuilderInfo;
 
 /**
  * Represents (a reference to) the type of a bean property, parameter etc. Types are managed per generated source file.
@@ -77,7 +78,9 @@ public class Type extends ModelElement implements Comparable<Type> {
     private final String name;
     private final String qualifiedName;
 
-    private final boolean isBuilder;
+    private final TypeMirror builtBy;
+    private final TypeMirror builds;
+
     private final boolean isInterface;
     private final boolean isEnumType;
     private final boolean isIterableType;
@@ -106,7 +109,7 @@ public class Type extends ModelElement implements Comparable<Type> {
                 TypeMirror typeMirror, TypeElement typeElement,
                 List<Type> typeParameters, ImplementationType implementationType, Type componentType,
                 String packageName, String name, String qualifiedName,
-                boolean isBuilder, boolean isInterface, boolean isEnumType, boolean isIterableType,
+                TypeMirror builtBy, TypeMirror builds, boolean isInterface, boolean isEnumType, boolean isIterableType,
                 boolean isCollectionType, boolean isMapType, boolean isStreamType, boolean isImported) {
 
         this.typeUtils = typeUtils;
@@ -123,7 +126,8 @@ public class Type extends ModelElement implements Comparable<Type> {
         this.name = name;
         this.qualifiedName = qualifiedName;
 
-        this.isBuilder = isBuilder;
+        this.builtBy = builtBy;
+        this.builds = builds;
 
         this.isInterface = isInterface;
         this.isEnumType = isEnumType;
@@ -197,7 +201,19 @@ public class Type extends ModelElement implements Comparable<Type> {
     }
 
     public boolean isBuilder() {
-        return isBuilder;
+        return builds != null;
+    }
+
+    public boolean hasBuilder() {
+        return builtBy != null;
+    }
+
+    public TypeMirror getBuiltBy() {
+        return builtBy;
+    }
+
+    public TypeMirror getBuilds() {
+        return builds;
     }
 
     /**
@@ -365,7 +381,8 @@ public class Type extends ModelElement implements Comparable<Type> {
             packageName,
             name,
             qualifiedName,
-            isBuilder,
+            builtBy,
+            builds,
             isInterface,
             isEnumType,
             isIterableType,
@@ -539,7 +556,7 @@ public class Type extends ModelElement implements Comparable<Type> {
 
     private List<Accessor> getAllAccessors() {
         if ( allAccessors == null ) {
-            allAccessors = Executables.getAllEnclosedAccessors( elementUtils, typeElement, isBuilder );
+            allAccessors = Executables.getAllEnclosedAccessors( elementUtils, typeElement, isBuilder() );
         }
 
         return allAccessors;
@@ -903,4 +920,5 @@ public class Type extends ModelElement implements Comparable<Type> {
 
         return null;
     }
+
 }

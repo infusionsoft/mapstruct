@@ -19,6 +19,7 @@
 package org.mapstruct.ap.internal.util;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ServiceLoader;
@@ -51,7 +52,7 @@ public class Services {
         return result;
     }
 
-    public static <T> List<T> getAll(Class<T> serviceType, T defaultValue) {
+    public static <T> List<T> getAll(Class<T> serviceType, T... defaultValues) {
 
         Iterator<T> services = ServiceLoader.load( serviceType, Services.class.getClassLoader() ).iterator();
         List<T> allProviders = new ArrayList<T>();
@@ -61,7 +62,7 @@ public class Services {
         }
 
         if ( allProviders.isEmpty() ) {
-            allProviders.add( defaultValue );
+            allProviders.addAll( Arrays.asList( defaultValues ) );
         }
 
         return allProviders;
