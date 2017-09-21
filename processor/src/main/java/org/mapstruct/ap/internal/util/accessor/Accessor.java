@@ -27,6 +27,8 @@ import javax.lang.model.type.TypeMirror;
 
 import java.util.Set;
 
+import org.mapstruct.ap.internal.model.common.Type;
+
 /**
  * This represents an Accessor that can be used for writing/reading a property to/from a bean.
  *
@@ -35,9 +37,9 @@ import java.util.Set;
 public interface Accessor {
 
     /**
-     * @return Returns the concrete type this accessor is being mapped for.
+     * @return Returns the type that is including this accessor.  This could be an abstract or concrete type
      */
-    TypeElement getParentType();
+    Type getIncludingType();
 
     /**
      * @return Whether or not this accessor is part of a builder.

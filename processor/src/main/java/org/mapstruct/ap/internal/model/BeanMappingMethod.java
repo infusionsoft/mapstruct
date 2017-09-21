@@ -99,6 +99,8 @@ public class BeanMappingMethod extends NormalTypeMappingMethod {
         private Map<String, List<Mapping>> methodMappings;
         private SingleMappingByTargetPropertyNameFunction singleMapping;
         private final Map<String, List<Mapping>> unprocessedDefinedTargets = new HashMap<String, List<Mapping>>();
+        private Type mapToType;
+        private String buildMethodName;
 
         public Builder mappingContext(MappingBuilderContext mappingContext) {
             this.ctx = mappingContext;
@@ -119,7 +121,17 @@ public class BeanMappingMethod extends NormalTypeMappingMethod {
             this.method = sourceMethod;
             this.methodMappings = sourceMethod.getMappingOptions().getMappings();
             CollectionMappingStrategyPrism cms = sourceMethod.getMapperConfiguration().getCollectionMappingStrategy();
-            Map<String, Accessor> accessors = method.getResultType().getPropertyWriteAccessors( cms );
+
+            final Type methodResultType = method.getResultType();
+            if ( methodResultType.hasBuilder() ) {
+                final BuilderInfo info = ctx.getBuilderFactory().findBuilderForType( methodResultType.getTypeMirror() );
+                buildMethodName = info.getBuildMethodName();
+                mapToType = ctx.getTypeFactory().getType( info.getBuilderType() );
+            } else {
+                mapToType = methodResultType;
+            }
+
+            Map<String, Accessor> accessors = mapToType.getPropertyWriteAccessors( cms );
             this.targetProperties = accessors.keySet();
 
             this.unprocessedTargetProperties = new LinkedHashMap<String, Accessor>( accessors );
@@ -171,7 +183,7 @@ public class BeanMappingMethod extends NormalTypeMappingMethod {
             if ( !method.isUpdateMethod() ) {
                 factoryMethod = ctx.getMappingResolver().getFactoryMethod(
                     method,
-                    method.getResultType(),
+                    mapToType,
                     selectionParameters
                 );
             }
@@ -222,21 +234,6 @@ public class BeanMappingMethod extends NormalTypeMappingMethod {
                         method.getReturnType()
                     );
                 }
-            }
-
-
-            String buildMethodName = null;
-            Type mapToType = null;
-            final Type finalType = firstNonNull( resultType, method.getResultType() );
-            if ( finalType != null && finalType.hasBuilder() ) {
-                final BuilderInfo info = ctx.getBuilderFactory().findBuilderForType( finalType.getTypeMirror() );
-                buildMethodName = info.getBuildMethodName();
-                mapToType = ctx.getTypeFactory().getType( info.getBuilderType() );
-                factoryMethod = ctx.getMappingResolver().getFactoryMethod(
-                    method,
-                    mapToType,
-                    selectionParameters
-                );
             }
 
             sortPropertyMappingsByDependencies();
@@ -667,7 +664,7 @@ public class BeanMappingMethod extends NormalTypeMappingMethod {
         }
 
         private Accessor getTargetPropertyReadAccessor(String propertyName) {
-            return method.getResultType().getPropertyReadAccessors().get( propertyName );
+            return mapToType.getPropertyReadAccessors().get( propertyName );
         }
 
         private ReportingPolicyPrism getUnmappedTargetPolicy() {

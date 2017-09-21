@@ -43,7 +43,7 @@ abstract class AbstractAccessor<T extends Element> implements Accessor {
     }
 
     @Override
-    public TypeElement getParentType() {
+    public TypeElement getIncludingType() {
         return parentType;
     }
 

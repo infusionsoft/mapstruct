@@ -24,7 +24,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.mapstruct.ap.test.builder.BuilderTests;
-import org.mapstruct.ap.test.naming.spi.CustomAccessorNamingStrategy;
 import org.mapstruct.ap.testutil.WithClasses;
 import org.mapstruct.ap.testutil.WithServiceImplementation;
 import org.mapstruct.ap.testutil.runner.AnnotationProcessorTestRunner;
@@ -53,22 +52,22 @@ public class AbstractBuilderTest {
     @WithClasses(ImmutableTargetMapper.class)
     public void testThatAbstractBuilderMapsAllProperties() {
         final ImmutableTargetMapper mapper = Mappers.getMapper( ImmutableTargetMapper.class );
-        final ImmutableTarget sourceOne = mapper.fromThingTwo( new Source( "foo", 31 ) );
+        final ImmutableTarget sourceOne = mapper.toImmutable( new Source( "foo", 31 ) );
 
         assertThat( sourceOne.getBar() ).isEqualTo( 31 );
         assertThat( sourceOne.getFoo() ).isEqualTo( "foo" );
     }
 
-//    @Test
-//    @WithClasses(ImmutableTargetMapper.class)
-//    public void testThatAbstractBuilderReverseMapsAllProperties() {
-//        final ImmutableTargetMapper mapper = Mappers.getMapper( ImmutableTargetMapper.class );
-//        final Source sourceOne = mapper.fromImmutable( ImmutableTarget.builder()
-//            .bar( 31 )
-//            .foo( "foo" )
-//            .build() );
-//
-//        assertThat( sourceOne.getBar() ).isEqualTo( 31 );
-//        assertThat( sourceOne.getFoo() ).isEqualTo( "foo" );
-//    }
+    @Test
+    @WithClasses(ImmutableTargetMapper.class)
+    public void testThatAbstractBuilderReverseMapsAllProperties() {
+        final ImmutableTargetMapper mapper = Mappers.getMapper( ImmutableTargetMapper.class );
+        final Source sourceOne = mapper.fromImmutable( ImmutableTarget.builder()
+            .bar( 31 )
+            .foo( "foo" )
+            .build() );
+
+        assertThat( sourceOne.getBar() ).isEqualTo( 31 );
+        assertThat( sourceOne.getFoo() ).isEqualTo( "foo" );
+    }
 }

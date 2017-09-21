@@ -23,5 +23,6 @@ import org.mapstruct.ReportingPolicy;
 
 @Mapper(unmappedTargetPolicy = ReportingPolicy.ERROR)
 public abstract class ImmutableTargetMapper {
-    abstract ImmutableTarget fromThingTwo(Source two);
+    abstract ImmutableTarget toImmutable(Source two);
+    abstract Source fromImmutable(ImmutableTarget two);
 }
